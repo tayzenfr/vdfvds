@@ -219,6 +219,7 @@
 
     function renderItemRows() {
         const container = document.getElementById("itemsContainer");
+        container.innerHTML = "";
         MATERIAL_ITEMS.forEach(label => {
             const id = "item_" + slug(label);
             container.insertAdjacentHTML("beforeend", `
@@ -276,14 +277,19 @@
 
     function openEmail(record) {
         const subject = encodeURIComponent(`Contrôle VTU du ${record.date} – ${record.conducteur}`);
-        
+
         const body = encodeURIComponent(
 `Bonjour,
 
 Le contrôle VTU du ${record.date} a été effectué par ${record.conducteur}.
 
-⚠️ IMPORTANT :
-Merci de joindre le fichier CSV téléchargé avant d’envoyer cet e-mail.
+⚠️ IMPORTANT : le fichier du contrôle a été téléchargé sur cet ordinateur.
+Avant d'envoyer cet e-mail, veuillez :
+
+1) Cliquer sur "Joindre un fichier" dans Gmail.
+2) Sélectionner le fichier CSV nommé :
+   controle_vtu_${record.date}.csv
+3) Vérifier le contenu, puis cliquer sur "Envoyer".
 
 Observation générale :
 ${record.observations || "RAS"}
@@ -291,6 +297,7 @@ ${record.observations || "RAS"}
 Cordialement.`
         );
 
+        // 👉 Ouvre le client mail / Gmail
         window.location.href = `mailto:${EMAIL_TO}?subject=${subject}&body=${body}`;
     }
 
@@ -309,7 +316,18 @@ Cordialement.`
             return;
         }
 
+        const ok = confirm(
+"En cliquant sur OK :\n\n" +
+"- Un fichier CSV du contrôle VTU va être téléchargé sur cet ordinateur.\n" +
+"- Tu seras ensuite redirigé vers la messagerie (ex : Gmail).\n\n" +
+"Dans l'e-mail, il faudra JOINDRE le fichier CSV avant d'envoyer."
+        );
+        if (!ok) return;
+
+        // 1) Téléchargement du fichier CSV
         exportCSV(record);
+
+        // 2) Ouverture de l'e-mail vers charpentreaupascal@gmail.com
         openEmail(record);
     });
 
@@ -319,7 +337,12 @@ Cordialement.`
         }
     });
 
-    renderItemRows();
+    (function init() {
+        renderItemRows();
+        const today = new Date().toISOString().slice(0, 10);
+        document.getElementById("date").value = today;
+    })();
 </script>
+
 </body>
 </html>
