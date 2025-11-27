@@ -285,7 +285,7 @@
             </tbody>
         </table>
         <div style="margin-top:.4rem;font-size:.75rem;color:#9ca3af;">
-            ⚠️ Les données sont stockées dans ce navigateur uniquement et sont automatiquement supprimées au bout de 40 jours.
+            ⚠️ Les données sont stockées dans ce navigateur et envoyées sur un stockage en ligne (si la connexion fonctionne).
         </div>
     </div>
 </main>
@@ -293,6 +293,9 @@
 <script>
     const STORAGE_KEY = "vtuInventaire";
     const DAYS_TO_KEEP = 40;
+
+    // 🔥 URL de ton API en ligne (à changer après avoir créé l'API)
+    const REMOTE_ENDPOINT = "https://TON_URL_D_API_ICI";
 
     const MATERIAL_ITEMS = [
         "Aspirateur à eau et chariot",
@@ -561,6 +564,33 @@
         renderHistory([]);
     }
 
+    // 🔥 Envoi du contrôle sur Internet
+    async function sendToServer(record) {
+        if (!REMOTE_ENDPOINT || REMOTE_ENDPOINT === "https://TON_URL_D_API_ICI") {
+            console.warn("REMOTE_ENDPOINT non configuré, rien n'est envoyé sur internet.");
+            return;
+        }
+
+        try {
+            const res = await fetch(REMOTE_ENDPOINT, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(record)
+            });
+
+            if (!res.ok) {
+                throw new Error("Réponse serveur non OK");
+            }
+
+            console.log("Contrôle VTU envoyé sur le serveur distant.");
+        } catch (err) {
+            console.error("Erreur d'envoi vers le serveur :", err);
+            alert("Contrôle enregistré en local, mais pas sur internet (problème de connexion ou serveur).");
+        }
+    }
+
     document.getElementById("inventaireForm").addEventListener("submit", function (e) {
         e.preventDefault();
         const form = e.target;
@@ -569,9 +599,12 @@
             date: form.date.value,
             conducteur: form.conducteur.value.trim(),
             observations: form.observations.value.trim(),
-            items: buildItemsFromForm()
+            items: buildItemsFromForm(),
+            // petit bonus : timestamp exact
+            createdAt: new Date().toISOString()
         };
 
+        // 🔹 Sauvegarde locale (comme avant)
         let records = loadRecords(); // purge incluse
         records.push(record);
         records = purgeOld(records);
@@ -580,7 +613,10 @@
         renderLastControl(record);
         renderHistory(records);
 
-        alert("Contrôle VTU enregistré sur ce téléphone / PC !");
+        // 🔹 Sauvegarde en ligne
+        sendToServer(record); // on ne bloque pas l'UI
+
+        alert("Contrôle VTU enregistré (local) et envoyé sur internet (si le serveur répond).");
     });
 
     document.getElementById("exportCsvBtn").addEventListener("click", exportCSV);
