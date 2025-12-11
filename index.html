@@ -150,6 +150,48 @@
             margin-top: .25rem;
         }
 
+        /* ========= RÉSUMÉ STATS ========= */
+
+        .resume-stats {
+            margin-top: .5rem;
+            margin-bottom: .7rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: .4rem;
+        }
+
+        .resume-tag {
+            border-radius: var(--radius-pill);
+            padding: .3rem .7rem;
+            font-size: .78rem;
+            border: 1px solid #1f2937;
+            background: #020617;
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+        }
+
+        .resume-tag span.label {
+            color: var(--muted);
+        }
+
+        .resume-tag span.value {
+            font-weight: 600;
+        }
+
+        .resume-tag.ok {
+            border-color: rgba(34,197,94,0.7);
+        }
+        .resume-tag.manquant {
+            border-color: rgba(249,115,22,0.7);
+        }
+        .resume-tag.hs {
+            border-color: rgba(239,68,68,0.7);
+        }
+        .resume-tag.non {
+            border-color: rgba(148,163,184,0.7);
+        }
+
         /* ========= GRID ========= */
 
         .grid-2 {
@@ -235,7 +277,7 @@
             display: inline-flex;
             align-items: center;
             gap: .3rem;
-            padding: .32rem .7rem;
+            padding: .38rem .85rem;
             border-radius: var(--radius-pill);
             border: 1px solid #334155;
             background: #020617;
@@ -448,6 +490,9 @@
         /* ========= RESPONSIVE ========= */
 
         @media (max-width: 768px) {
+            body {
+                font-size: 15px;
+            }
             main {
                 padding-inline: .7rem;
             }
@@ -552,6 +597,30 @@
             <p class="legend-help">
                 Pour chaque matériel : <strong>Présent</strong>, <strong>Manquant</strong> ou <strong>HS</strong>, avec remarque si besoin.
             </p>
+
+            <div class="resume-stats">
+                <div class="resume-tag total">
+                    <span class="label">Total :</span>
+                    <span class="value" id="statTotal">0</span>
+                </div>
+                <div class="resume-tag ok">
+                    <span class="label">OK :</span>
+                    <span class="value" id="statOK">0</span>
+                </div>
+                <div class="resume-tag manquant">
+                    <span class="label">Manquant :</span>
+                    <span class="value" id="statManquant">0</span>
+                </div>
+                <div class="resume-tag hs">
+                    <span class="label">HS :</span>
+                    <span class="value" id="statHS">0</span>
+                </div>
+                <div class="resume-tag non">
+                    <span class="label">Non renseigné :</span>
+                    <span class="value" id="statNon">0</span>
+                </div>
+            </div>
+
             <div id="itemsContainer"></div>
         </fieldset>
 
@@ -633,6 +702,7 @@
                 </div>
             `);
         });
+        updateStatsFromDOM();
     }
 
     function setupEtatListeners() {
@@ -665,6 +735,8 @@
                 if (value === "Manquant") label.classList.add("etat-manquant");
                 if (value === "HS") label.classList.add("etat-hs");
             }
+
+            updateStatsFromDOM();
         });
     }
 
@@ -681,16 +753,55 @@
         return items;
     }
 
+    function computeStats(items) {
+        let total = items.length;
+        let ok = 0, manquant = 0, hs = 0, non = 0;
+        items.forEach(it => {
+            if (it.etat === "OK") ok++;
+            else if (it.etat === "Manquant") manquant++;
+            else if (it.etat === "HS") hs++;
+            else non++;
+        });
+        return { total, ok, manquant, hs, non };
+    }
+
+    function updateStatsFromDOM() {
+        const items = buildItems();
+        const stats = computeStats(items);
+        document.getElementById("statTotal").textContent = stats.total;
+        document.getElementById("statOK").textContent = stats.ok;
+        document.getElementById("statManquant").textContent = stats.manquant;
+        document.getElementById("statHS").textContent = stats.hs;
+        document.getElementById("statNon").textContent = stats.non;
+    }
+
     function exportCSV(record) {
-        let rows = ["date;agent;item;etat;remarque;obsGenerale"];
+        const stats = computeStats(record.items);
+        let rows = [];
+
+        // Ligne de synthèse
+        rows.push("type;date;agent;nbTotal;nbOK;nbManquant;nbHS;nbNonRenseigne;obsGenerale");
+        rows.push([
+            "VTU",
+            record.date,
+            record.conducteur,
+            stats.total,
+            stats.ok,
+            stats.manquant,
+            stats.hs,
+            stats.non,
+            record.observations.replace(/;/g, ",")
+        ].join(";"));
+
+        rows.push(""); // ligne vide
+
+        // Détail par matériel
+        rows.push("item;etat;remarque");
         record.items.forEach(it => {
             rows.push([
-                record.date,
-                record.conducteur,
                 it.item,
                 it.etat,
-                it.obs.replace(/;/g, ","),
-                record.observations.replace(/;/g, ",")
+                it.obs.replace(/;/g, ",")
             ].join(";"));
         });
 
@@ -771,6 +882,8 @@ Cordialement.`
                     label.classList.remove("etat-ok", "etat-manquant", "etat-hs");
                 });
             });
+
+            updateStatsFromDOM();
         }
     });
 
